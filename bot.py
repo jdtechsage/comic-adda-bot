@@ -1,19 +1,16 @@
-"""
-bot.py — Telegram bot entry point.
-Runs on Python 3.11 (pinned via .python-version).
-Health server starts first so Render sees an open port immediately,
-then the Pyrogram bot connects to Telegram.
-"""
-
 import asyncio
 import os
+
+# Must happen before pyrogram import
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
 from aiohttp import web
 from pyrogram import Client, idle
 from config import API_ID, API_HASH, BOT_TOKEN
 from handlers import moderation, antilink, leveling, leaderboard, rank
 
 OWNER_USERNAME = "deepdarji"
-
 
 async def start_health_server():
     port = int(os.environ.get("PORT", 8080))
@@ -22,8 +19,7 @@ async def start_health_server():
     runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", port).start()
-    print(f"✅ Health server on port {port}")
-
+    print(f"✅ Health server on port {port}", flush=True)
 
 async def main():
     await start_health_server()
@@ -42,28 +38,29 @@ async def main():
     rank.register(bot)
 
     try:
-        print("⏳ Connecting to Telegram...")
+        print("⏳ Connecting to Telegram...", flush=True)
         await bot.start()
         me = await bot.get_me()
-        print(f"✅ Bot online: @{me.username}")
+        print(f"✅ Bot online: @{me.username}", flush=True)
 
         try:
             await bot.send_message(
                 OWNER_USERNAME,
-                f"✅ **Bot is online!**\n"
-                f"🤖 @{me.username} is now running on Render."
+                f"✅ Bot is online!\n🤖 @{me.username} running on Render."
             )
         except Exception as e:
-            print(f"⚠️ Owner notify failed: {e}")
+            print(f"⚠️ Notify failed: {e}", flush=True)
 
         await idle()
 
     except Exception as e:
-        print(f"❌ Bot error: {e}")
+        print(f"❌ Bot error: {type(e).__name__}: {e}", flush=True)
         raise
     finally:
-        await bot.stop()
-
+        try:
+            await bot.stop()
+        except Exception:
+            pass
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop.run_until_complete(main())
