@@ -3,13 +3,11 @@ import asyncio
 from aiohttp import web
 from pyrogram import Client, idle
 
-print("STEP 1: bot.py started", flush=True)
+print("Starting bot...", flush=True)
 
 API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-
-print("STEP 2: env loaded", flush=True)
 
 app = Client(
     "comic_adda_bot",
@@ -18,16 +16,21 @@ app = Client(
     bot_token=BOT_TOKEN
 )
 
-print("STEP 3: client created", flush=True)
+# IMPORT HANDLERS
+from handlers.antilink import *
+from handlers.moderation import *
+from handlers.leveling import *
+from handlers.rank import *
+from handlers.leaderboard import *
+
+print("Handlers loaded!", flush=True)
 
 
 async def health(request):
-    return web.Response(text="Bot running!")
+    return web.Response(text="Bot is running!")
 
 
 async def start_health_server():
-    print("STEP 4: starting health server", flush=True)
-
     port = int(os.environ.get("PORT", 10000))
 
     web_app = web.Application()
@@ -39,33 +42,33 @@ async def start_health_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
 
-    print(f"✅ Health server running on port {port}", flush=True)
+    print(f"Health server running on port {port}", flush=True)
 
 
 async def main():
+    await start_health_server()
+
+    print("Connecting bot...", flush=True)
+
+    await app.start()
+
+    me = await app.get_me()
+
+    print(f"✅ Bot online: @{me.username}", flush=True)
+
     try:
-        await start_health_server()
-
-        print("STEP 5: connecting bot", flush=True)
-
-        await app.start()
-
-        me = await app.get_me()
-
-        print(f"✅ Bot online: @{me.username}", flush=True)
-
         await app.send_message(
             "deepdarji",
-            f"✅ Bot started successfully!\n🤖 @{me.username}"
+            f"✅ Bot online!\n🤖 @{me.username}"
         )
-
-        print("STEP 6: sent startup message", flush=True)
-
-        await idle()
-
     except Exception as e:
-        print("❌ ERROR:", repr(e), flush=True)
-        raise
+        print(f"Startup message failed: {e}", flush=True)
+
+    print("Bot fully started!", flush=True)
+
+    await idle()
+
+    await app.stop()
 
 
 asyncio.run(main())
