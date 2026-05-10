@@ -1,66 +1,71 @@
-import asyncio
 import os
-
-# Must happen before pyrogram import
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-
+import asyncio
 from aiohttp import web
 from pyrogram import Client, idle
-from config import API_ID, API_HASH, BOT_TOKEN
-from handlers import moderation, antilink, leveling, leaderboard, rank
 
-OWNER_USERNAME = "deepdarji"
+print("STEP 1: bot.py started", flush=True)
+
+API_ID = int(os.environ["API_ID"])
+API_HASH = os.environ["API_HASH"]
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+
+print("STEP 2: env loaded", flush=True)
+
+app = Client(
+    "comic_adda_bot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN
+)
+
+print("STEP 3: client created", flush=True)
+
+
+async def health(request):
+    return web.Response(text="Bot running!")
+
 
 async def start_health_server():
-    port = int(os.environ.get("PORT", 8080))
-    app = web.Application()
-    app.router.add_get("/", lambda r: web.Response(text="Bot is running!"))
-    runner = web.AppRunner(app)
+    print("STEP 4: starting health server", flush=True)
+
+    port = int(os.environ.get("PORT", 10000))
+
+    web_app = web.Application()
+    web_app.router.add_get("/", health)
+
+    runner = web.AppRunner(web_app)
     await runner.setup()
-    await web.TCPSite(runner, "0.0.0.0", port).start()
-    print(f"✅ Health server on port {port}", flush=True)
+
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+
+    print(f"✅ Health server running on port {port}", flush=True)
+
 
 async def main():
-    await start_health_server()
-
-    bot = Client(
-        "adda_bot",
-        api_id=API_ID,
-        api_hash=API_HASH,
-        bot_token=BOT_TOKEN,
-    )
-
-    moderation.register(bot)
-    antilink.register(bot)
-    leveling.register(bot)
-    leaderboard.register(bot)
-    rank.register(bot)
-
     try:
-        print("⏳ Connecting to Telegram...", flush=True)
-        await bot.start()
-        me = await bot.get_me()
+        await start_health_server()
+
+        print("STEP 5: connecting bot", flush=True)
+
+        await app.start()
+
+        me = await app.get_me()
+
         print(f"✅ Bot online: @{me.username}", flush=True)
 
-        try:
-            await bot.send_message(
-                OWNER_USERNAME,
-                f"✅ Bot is online!\n🤖 @{me.username} running on Render."
-            )
-        except Exception as e:
-            print(f"⚠️ Notify failed: {e}", flush=True)
+        await app.send_message(
+            "deepdarji",
+            f"✅ Bot started successfully!\n🤖 @{me.username}"
+        )
+
+        print("STEP 6: sent startup message", flush=True)
 
         await idle()
 
     except Exception as e:
-        print(f"❌ Bot error: {type(e).__name__}: {e}", flush=True)
+        print("❌ ERROR:", repr(e), flush=True)
         raise
-    finally:
-        try:
-            await bot.stop()
-        except Exception:
-            pass
 
-if __name__ == "__main__":
-    loop.run_until_complete(main())
+
+asyncio.run(main())
