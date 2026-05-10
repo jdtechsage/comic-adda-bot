@@ -1,15 +1,19 @@
 """
 bot.py — Entry point for the Telegram moderation + leveling bot.
 
-Python 3.14 removed asyncio.get_event_loop() compatibility that pyrogram's
-sync wrapper relied on. Fix: run everything natively async in one event loop.
-- Pyrogram runs as a proper async client (app.start() / app.stop())
-- aiohttp replaces Flask for the health server (no threading needed)
-- Both run together via asyncio.gather()
+pyrotgfork is a maintained pyrogram fork that works on Python 3.14.
+We also manually set an event loop before importing pyrogram,
+because Python 3.14 no longer auto-creates one on the main thread.
 """
 
 import asyncio
 import os
+
+# ── MUST be before any pyrogram import ───────────────────────────────────────
+# Python 3.14 removed the implicit event loop. Set one before pyrogram loads.
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
 from aiohttp import web
 from pyrogram import Client
 from config import API_ID, API_HASH, BOT_TOKEN
@@ -25,7 +29,7 @@ async def run_health_server():
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", port).start()
     print(f"✅ Health server on port {port}")
-    await asyncio.Event().wait()  # keep alive forever
+    await asyncio.Event().wait()
 
 
 # ── Pyrogram async bot ────────────────────────────────────────────────────────
@@ -37,7 +41,6 @@ async def run_bot():
         bot_token=BOT_TOKEN,
     )
 
-    # Register all handler modules
     moderation.register(bot)
     antilink.register(bot)
     leveling.register(bot)
@@ -46,11 +49,10 @@ async def run_bot():
 
     await bot.start()
     print("✅ Bot is running...")
-    await asyncio.Event().wait()  # keep alive until process is killed
+    await asyncio.Event().wait()
     await bot.stop()
 
 
-# ── Start both together in one event loop ────────────────────────────────────
 async def main():
     await asyncio.gather(
         run_health_server(),
@@ -58,4 +60,4 @@ async def main():
     )
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop.run_until_complete(main())
