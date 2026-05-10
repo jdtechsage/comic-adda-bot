@@ -19,6 +19,8 @@ from pyrogram import Client
 from config import API_ID, API_HASH, BOT_TOKEN
 from handlers import moderation, antilink, leveling, leaderboard, rank
 
+OWNER_USERNAME = "deepdarji"  # Send startup message to this user
+
 
 # ── Tiny async health server (required so Render doesn't kill the process) ────
 async def run_health_server():
@@ -34,23 +36,43 @@ async def run_health_server():
 
 # ── Pyrogram async bot ────────────────────────────────────────────────────────
 async def run_bot():
-    bot = Client(
-        "adda_bot",
-        api_id=API_ID,
-        api_hash=API_HASH,
-        bot_token=BOT_TOKEN,
-    )
+    try:
+        bot = Client(
+            "adda_bot",
+            api_id=API_ID,
+            api_hash=API_HASH,
+            bot_token=BOT_TOKEN,
+        )
 
-    moderation.register(bot)
-    antilink.register(bot)
-    leveling.register(bot)
-    leaderboard.register(bot)
-    rank.register(bot)
+        moderation.register(bot)
+        antilink.register(bot)
+        leveling.register(bot)
+        leaderboard.register(bot)
+        rank.register(bot)
 
-    await bot.start()
-    print("✅ Bot is running...")
-    await asyncio.Event().wait()
-    await bot.stop()
+        print("⏳ Connecting to Telegram...")
+        await bot.start()
+        me = await bot.get_me()
+        print(f"✅ Bot is running as @{me.username}")
+
+        # Notify owner that bot has started successfully
+        try:
+            await bot.send_message(
+                OWNER_USERNAME,
+                f"✅ **Bot is online!**\n"
+                f"🤖 Running as @{me.username}\n"
+                f"🚀 Just deployed on Render."
+            )
+            print(f"✅ Startup message sent to @{OWNER_USERNAME}")
+        except Exception as notify_err:
+            print(f"⚠️ Could not notify owner: {notify_err}")
+
+        await asyncio.Event().wait()
+        await bot.stop()
+
+    except Exception as e:
+        print(f"❌ Bot crashed: {e}")
+        raise
 
 
 async def main():
